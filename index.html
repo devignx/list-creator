@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grocery Curator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #ffffff;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: #1a1a1a;
+            padding-bottom: 120px;
+        }
+        .item-row {
+            transition: all 0.1s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .item-row:active {
+            background-color: #f9fafb;
+        }
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            z-index: 40;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.2s ease;
+        }
+        .sticky-header.scrolled {
+            border-color: #f3f4f6;
+        }
+        .sticky-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid #e5e7eb;
+            padding: 20px 16px;
+            z-index: 50;
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(2px);
+        }
+        .search-input-focus:focus {
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="max-w-xl mx-auto px-4">
+        <!-- Sticky Header Container -->
+        <div id="header-wrapper" class="sticky-header mb-4 py-4">
+            <!-- Default Header -->
+            <header id="standard-header" class="flex justify-between items-center pr-1">
+                <div>
+                    <h1 id="display-title" class="text-xl font-bold tracking-tight text-gray-900 leading-tight">Grocery List</h1>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleSearch(true)" class="p-2 text-gray-400 hover:text-gray-900 transition-colors" aria-label="Search">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </button>
+                    <button onclick="toggleSettings(true)" class="p-2 text-gray-400 hover:text-gray-900 transition-colors" aria-label="Settings">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Search Header (Hidden by default) -->
+            <header id="search-header" class="hidden items-center gap-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input type="text" id="search-input" placeholder="Search inventory..." class="flex-1 bg-transparent text-base py-1 search-input-focus" oninput="handleSearch()">
+                <button onclick="toggleSearch(false)" class="p-1.5 text-gray-400 hover:text-black transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </header>
+        </div>
+
+        <!-- Main List -->
+        <div id="main-list" class="divide-y divide-gray-100 border-t border-gray-100">
+            <!-- Items injected here -->
+        </div>
+
+        <!-- Sticky Footer Container -->
+        <div class="sticky-footer">
+            <div class="max-w-xl mx-auto flex gap-3">
+                <button onclick="requestReset()" id="clear-btn" class="aspect-square bg-gray-100 hover:bg-gray-200 text-gray-600 p-4 rounded-lg transition-all flex items-center justify-center disabled:opacity-30 shadow-sm" title="Clear All">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+                <button onclick="copyToClipboard()" id="cta-btn" class="flex-1 bg-black hover:bg-gray-800 text-white font-bold py-4 px-6 rounded-lg text-lg transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm">
+                    Copy List <span id="count-summary" class="bg-white/20 px-2.5 py-0.5 rounded text-xs ml-1 font-semibold">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Confirmation Modal -->
+        <div id="reset-modal" class="fixed inset-0 z-[60] modal-overlay hidden flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-sm rounded-xl shadow-2xl overflow-hidden p-6 text-center">
+                <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Clear entire list?</h3>
+                <p class="text-gray-500 mb-8">This will remove all items and quantities from your current cart.</p>
+                <div class="flex gap-3">
+                    <button onclick="toggleResetModal(false)" class="flex-1 px-4 py-3 border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button onclick="confirmReset()" class="flex-1 bg-red-500 text-white px-4 py-3 rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors shadow-sm">Yes, Clear All</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="fixed inset-0 z-50 modal-overlay hidden flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-gray-200">
+                <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <h2 class="font-bold text-gray-900">App Settings</h2>
+                    <button onclick="toggleSettings(false)" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="p-5 space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Display Name</label>
+                        <input type="text" id="title-input" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black outline-none text-base">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Inventory (One per line)</label>
+                        <textarea id="csv-editor" class="w-full h-48 p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black outline-none text-base font-mono"></textarea>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button onclick="toggleSettings(false)" class="flex-1 px-4 py-3 border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button onclick="saveAll()" class="flex-1 bg-black text-white px-4 py-3 rounded-lg text-sm font-semibold hover:bg-gray-800 transition-colors shadow-sm">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div id="toast" class="fixed bottom-28 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-xl hidden opacity-0 transition-opacity text-sm font-medium z-50">
+            List copied to clipboard
+        </div>
+    </div>
+
+    <script>
+        let masterItems = ["Apples", "Bananas", "Bread", "Butter", "Chicken", "Coffee", "Eggs", "Milk", "Potatoes", "Sugar"];
+        let cart = {}; 
+        let appTitle = "Grocery List";
+        let searchQuery = "";
+
+        window.onload = () => {
+            const savedCSV = localStorage.getItem('v3_csv');
+            const savedTitle = localStorage.getItem('v3_title');
+            if (savedCSV) {
+                masterItems = savedCSV.split('\n').map(i => i.trim()).filter(i => i);
+            }
+            if (savedTitle) appTitle = savedTitle;
+
+            const savedCart = localStorage.getItem('v3_cart');
+            if (savedCart) {
+                try {
+                    cart = JSON.parse(savedCart);
+                } catch (e) {
+                    cart = {};
+                }
+            }
+
+            document.getElementById('display-title').innerText = appTitle;
+            document.getElementById('title-input').value = appTitle;
+            document.getElementById('csv-editor').value = masterItems.join('\n');
+
+            renderList();
+
+            window.addEventListener('scroll', () => {
+                const header = document.getElementById('header-wrapper');
+                if (window.scrollY > 10) {
+                    header.classList.add('scrolled');
+                } else {
+                    header.classList.remove('scrolled');
+                }
+            });
+        };
+
+        function saveCartState() {
+            localStorage.setItem('v3_cart', JSON.stringify(cart));
+        }
+
+        function toggleSearch(show) {
+            const standard = document.getElementById('standard-header');
+            const search = document.getElementById('search-header');
+            const input = document.getElementById('search-input');
+            
+            if (show) {
+                standard.classList.remove('flex');
+                standard.classList.add('hidden');
+                search.classList.remove('hidden');
+                search.classList.add('flex');
+                input.focus();
+            } else {
+                search.classList.remove('flex');
+                search.classList.add('hidden');
+                standard.classList.remove('hidden');
+                standard.classList.add('flex');
+                input.value = "";
+                searchQuery = "";
+                renderList();
+            }
+        }
+
+        function handleSearch() {
+            searchQuery = document.getElementById('search-input').value.toLowerCase();
+            renderList();
+        }
+
+        function requestReset() {
+            if (Object.keys(cart).length === 0) return;
+            toggleResetModal(true);
+        }
+
+        function toggleResetModal(show) {
+            const modal = document.getElementById('reset-modal');
+            modal.classList.toggle('hidden', !show);
+        }
+
+        function confirmReset() {
+            cart = {};
+            saveCartState();
+            renderList();
+            toggleResetModal(false);
+        }
+
+        function renderList() {
+            const container = document.getElementById('main-list');
+            container.innerHTML = "";
+
+            let items = [...masterItems].sort((a, b) => a.localeCompare(b, undefined, {sensitivity: 'base'}));
+
+            if (searchQuery) {
+                items = items.filter(item => item.toLowerCase().includes(searchQuery));
+            }
+
+            items.forEach((item) => {
+                const qty = cart[item] || 0;
+                const isSelected = qty > 0;
+                const row = document.createElement('div');
+                row.className = `item-row flex items-center justify-between py-4 transition-colors cursor-pointer select-none`;
+                
+                row.onclick = (e) => {
+                    if (!e.target.closest('.controls')) {
+                        increment(item);
+                    }
+                };
+                
+                row.innerHTML = `
+                    <div class="flex-1">
+                        <span class="text-xl tracking-tight transition-all duration-200 ${isSelected ? 'font-bold text-black' : 'font-normal text-gray-600'}">
+                            ${item}
+                        </span>
+                    </div>
+                    
+                    <div class="controls flex items-center gap-2 ${isSelected ? 'opacity-100' : 'opacity-0 pointer-events-none'}">
+                         <button onclick="decrement('${item}')" class="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 rounded transition-colors text-2xl font-light">-</button>
+                         <span class="w-6 text-center text-lg font-semibold text-black tracking-tight">${qty}</span>
+                         <button onclick="increment('${item}')" class="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 rounded transition-colors text-2xl font-light">+</button>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            if (items.length === 0 && searchQuery) {
+                container.innerHTML = `<div class="py-12 text-center text-gray-400">No items matching "${searchQuery}"</div>`;
+            }
+
+            updateCTA();
+        }
+
+        function increment(item) {
+            cart[item] = (cart[item] || 0) + 1;
+            saveCartState();
+            renderList();
+        }
+
+        function decrement(item) {
+            if (cart[item] > 0) {
+                cart[item]--;
+                if (cart[item] === 0) delete cart[item];
+                saveCartState();
+                renderList();
+            }
+        }
+
+        function updateCTA() {
+            const items = Object.keys(cart);
+            const totalItems = items.length;
+            document.getElementById('count-summary').innerText = totalItems;
+            document.getElementById('cta-btn').disabled = totalItems === 0;
+            document.getElementById('clear-btn').disabled = totalItems === 0;
+        }
+
+        function toggleSettings(show) {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.toggle('hidden', !show);
+        }
+
+        function saveAll() {
+            appTitle = document.getElementById('title-input').value || "Grocery List";
+            const csv = document.getElementById('csv-editor').value;
+            masterItems = csv.split('\n').map(i => i.trim()).filter(i => i);
+
+            localStorage.setItem('v3_csv', masterItems.join('\n'));
+            localStorage.setItem('v3_title', appTitle);
+
+            document.getElementById('display-title').innerText = appTitle;
+            toggleSettings(false);
+            renderList();
+        }
+
+        function copyToClipboard() {
+            const items = Object.keys(cart).sort((a, b) => a.localeCompare(b, undefined, {sensitivity: 'base'}));
+            if (items.length === 0) return;
+
+            const date = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            let text = `Date: ${date}\n\n`;
+            items.forEach(name => {
+                text += `${name}: ${cart[name]}\n`;
+            });
+
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast();
+            } catch (err) {
+                console.error('Failed to copy', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.style.opacity = "1", 10);
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
