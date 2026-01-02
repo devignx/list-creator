@@ -56,7 +56,6 @@
     <div id="app" class="max-w-xl mx-auto px-4">
         <!-- Sticky Header Container -->
         <div id="header-wrapper" class="sticky-header mb-4 py-4">
-            <!-- Default Header -->
             <header id="standard-header" class="flex justify-between items-center pr-1">
                 <div>
                     <h1 id="display-title" class="text-xl font-bold tracking-tight text-gray-900 leading-tight">Grocery List</h1>
@@ -76,7 +75,6 @@
                 </div>
             </header>
 
-            <!-- Search Header (Hidden by default) -->
             <header id="search-header" class="hidden items-center gap-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -90,14 +88,18 @@
             </header>
         </div>
 
-        <!-- Main List -->
         <div id="main-list" class="divide-y divide-gray-100 border-t border-gray-100">
             <!-- Items injected here -->
         </div>
 
-        <!-- Sticky Footer Container -->
+        <!-- Sticky Footer -->
         <div class="sticky-footer">
             <div class="max-w-xl mx-auto flex gap-3">
+                <button onclick="toggleAddModal(true)" class="aspect-square bg-blue-50 hover:bg-blue-100 text-blue-600 p-4 rounded-lg transition-all flex items-center justify-center shadow-sm" title="Add New Item">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                    </svg>
+                </button>
                 <button onclick="requestReset()" id="clear-btn" class="aspect-square bg-gray-100 hover:bg-gray-200 text-gray-600 p-4 rounded-lg transition-all flex items-center justify-center disabled:opacity-30 shadow-sm" title="Clear All">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -109,7 +111,19 @@
             </div>
         </div>
 
-        <!-- Confirmation Modal -->
+        <!-- Add Item Modal -->
+        <div id="add-modal" class="fixed inset-0 z-[70] modal-overlay hidden flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-sm rounded-xl shadow-2xl overflow-hidden p-6">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">Add New Item</h3>
+                <input type="text" id="new-item-input" placeholder="Enter item name..." class="w-full p-4 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-black outline-none text-lg mb-6">
+                <div class="flex gap-3">
+                    <button onclick="toggleAddModal(false)" class="flex-1 px-4 py-3 border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button onclick="addNewItem()" class="flex-1 bg-black text-white px-4 py-3 rounded-lg text-sm font-semibold hover:bg-gray-800 transition-colors shadow-sm">Save Item</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reset Modal -->
         <div id="reset-modal" class="fixed inset-0 z-[60] modal-overlay hidden flex items-center justify-center p-4">
             <div class="bg-white w-full max-w-sm rounded-xl shadow-2xl overflow-hidden p-6 text-center">
                 <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -195,6 +209,11 @@
                     header.classList.remove('scrolled');
                 }
             });
+
+            // Enter key listeners
+            document.getElementById('new-item-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addNewItem();
+            });
         };
 
         function saveCartState() {
@@ -226,6 +245,38 @@
         function handleSearch() {
             searchQuery = document.getElementById('search-input').value.toLowerCase();
             renderList();
+        }
+
+        function toggleAddModal(show) {
+            const modal = document.getElementById('add-modal');
+            const input = document.getElementById('new-item-input');
+            modal.classList.toggle('hidden', !show);
+            if (show) {
+                input.value = "";
+                input.focus();
+            }
+        }
+
+        function addNewItem() {
+            const input = document.getElementById('new-item-input');
+            const name = input.value.trim();
+            if (!name) return;
+
+            // Check if exists (case insensitive)
+            const exists = masterItems.some(item => item.toLowerCase() === name.toLowerCase());
+            
+            if (!exists) {
+                masterItems.push(name);
+                localStorage.setItem('v3_csv', masterItems.join('\n'));
+                document.getElementById('csv-editor').value = masterItems.join('\n');
+            }
+
+            // Automatically add to cart and reset search
+            increment(name);
+            toggleAddModal(false);
+            if (searchQuery) {
+                toggleSearch(false);
+            }
         }
 
         function requestReset() {
