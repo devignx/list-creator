@@ -3,50 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grocery List</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title>List Creator</title>
+    <style>
+        #bulk-action-bar {
+            display: none;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border: 1px solid #ccc;
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto p-4">
-        <h1 class="text-2xl font-bold mb-4">Grocery List</h1>
-        <div id="grocery-items" class="grid grid-cols-1 gap-4"></div>
-        <div class="fixed bottom-0 left-0 right-0 bg-gray-800 p-4 flex justify-between">
-            <button id="reset" class="bg-red-500 text-white p-2 rounded">Reset</button>
-            <button id="delete" class="bg-blue-500 text-white p-2 rounded">Delete</button>
-        </div>
+<body>
+    <div id="item-container">
+        <!-- Items will go here -->
+    </div>
+    <div id="bulk-action-bar">
+        <span id="selected-count">0 selected</span>
+        <button id="reset-button">Reset</button>
+        <button id="delete-button">Delete</button>
     </div>
     <script>
-        let selectedItems = [];
-        const groceryItemsContainer = document.getElementById('grocery-items');
+        let selectedItems = new Set();
+        let timeout;
 
-        function longPressAction(item) {
-            setTimeout(() => {
-                if (selectedItems.includes(item)) {
-                    selectedItems = selectedItems.filter(i => i !== item);
-                } else {
-                    selectedItems.push(item);
-                }
-                updateItemSelection();
-            }, 500);
-        }
+        document.querySelectorAll('.item').forEach(item => {
+            item.addEventListener('mousedown', (event) => {
+                timeout = setTimeout(() => {
+                    item.classList.toggle('selected');
+                    updateSelection(item);
+                }, 500);
+            });
 
-        function updateItemSelection() {
-            // Logic to update the display of selected items
-        }
+            item.addEventListener('mouseup', () => {
+                clearTimeout(timeout);
+            });
 
-        document.addEventListener('DOMContentLoaded', () => {
-            // Logic to populate grocery items and add event listeners here
-            groceryItemsContainer.innerHTML = '<div class="item" onmousedown="longPressAction(1)">Item 1</div>';
-            // ...add more items
+            item.addEventListener('mouseleave', () => {
+                clearTimeout(timeout);
+            });
         });
 
-        document.getElementById('reset').addEventListener('click', () => {
-            selectedItems = [];
-            updateItemSelection();
+        function updateSelection(item) {
+            if (item.classList.contains('selected')) {
+                selectedItems.add(item.dataset.id);
+            } else {
+                selectedItems.delete(item.dataset.id);
+            }
+            updateBulkActionBar();
+        }
+
+        function updateBulkActionBar() {
+            const count = selectedItems.size;
+            document.getElementById('selected-count').innerText = `${count} selected`;
+            document.getElementById('bulk-action-bar').style.display = count ? 'block' : 'none';
+        }
+
+        document.getElementById('reset-button').addEventListener('click', () => {
+            document.querySelectorAll('.item.selected').forEach(item => {
+                item.classList.remove('selected');
+            });
+            selectedItems.clear();
+            updateBulkActionBar();
         });
 
-        document.getElementById('delete').addEventListener('click', () => {
+        document.getElementById('delete-button').addEventListener('click', () => {
             // Logic to delete selected items
+            alert('Delete action triggered for selected items');
         });
     </script>
 </body>
